@@ -1,4 +1,29 @@
 #include "main.h"
+// #include <memory>
+
+// struct AllocationMetrics{
+// 	uint64_t totalAllocated=0;
+// 	uint64_t totalFreed=0;
+
+// 	uint64_t currentUsage(){return totalAllocated-totalFreed;}
+// };
+
+// static AllocationMetrics s_AllocationMetrics;
+
+// void* operator new(size_t size){
+// 	s_AllocationMetrics.totalAllocated +=size;
+// 	return malloc(size);
+// }
+
+// void operator delete(void *memory,size_t size){
+// 	s_AllocationMetrics.totalFreed +=size;
+// 	free(memory);
+// }
+
+// static void printMemoryUsage(){
+// 	cout<<"Memory Usage: "<<s_AllocationMetrics.currentUsage()<<" bytes\n";
+// }
+
 int MAXSIZE;
 
 // setup Huffman tree
@@ -6,6 +31,7 @@ class HuffNode{
 	public:
 		char val;
 		int wgt;
+		int height;
 		HuffNode* pleft;
 		HuffNode* pright;
 	public:
@@ -17,6 +43,7 @@ class HuffNode{
 		char letter(){return val;}
 		HuffNode(char letter,int wgt)
 		:val(letter), wgt(wgt){
+			this->height=1;
 			pleft=NULL;
 			pright=NULL;
 		}
@@ -25,16 +52,10 @@ class HuffNode{
 			val ='0';
 			pleft=l;
 			pright=r;
+			this->height=max(l->height,r->height)+1;
 		}
 };
-int height(HuffNode *root)
-{
-	if (root == NULL)
-		return 0;
-	if (root->pleft == NULL && root->pright == NULL)
-		return 1;
-	return 1 + max(height(root->pleft), height(root->pright));
-}
+
 
 class HuffTree{
 	private:
@@ -49,50 +70,15 @@ class HuffTree{
 			// thực hiện nối 2 cây và cân bằng giá trị weight cần được giữ lại
 			this->order=stt;
 			root=new HuffNode(l->Root(),r->Root());
-			if(height(root->pleft)-height(root->pright)>1){
-				// can bang trai
-				left_balance(root);
-			}
-			else if(height(root->pright)-height(root->pleft)>1){
-				// can bang phai
-				right_balance(root);
-			}
-			// int wgt=root->weight();
-			// if(height(root->pleft)-height(root->pright)>1){
-			// 	// lech trai
-			// 	// l-l
-			// 	HuffNode* left_tree=root->pleft;
-			// 	if(height(left_tree->pleft)>height(left_tree->pright)){
-			// 		rotateRight(root);
-			// 	}
-			// 	// l-r	
-			// 	else if(height(left_tree->pleft)<height(left_tree->pright)){
-			// 		rotateLeft(root->pleft);
-			// 		rotateRight(root);
-			// 	}
-
-			// }
-			// else if(height(root->pright)-height(root->pleft)>1){
-			// 	//lech phai
-			// 	HuffNode* right_tree=root->pright;
-			// 	// r-r
-			// 	if(height(right_tree->pright)>height(right_tree->pleft)){
-			// 		rotateLeft(root);
-			// 	}
-			// 	// r-l
-			// 	else if(height(right_tree->pright)<height(right_tree->pleft)){
-			// 		rotateRight(root->pright);
-			// 		rotateLeft(root);
-			// 	}
-			// }
-			// root->wgt=wgt;
+			balancePreorder(root,3);
+			
 		}
 		HuffNode* Root(){return root;}
 		void printInOrderRecur(HuffNode* root){
 			if(root==NULL) return;
 			printInOrderRecur(root->pleft);
-			if(root->letter()!='0') cout<<root->letter()<<endl;
-			else cout<<root->weight()<<endl;
+			if(root->letter()!='0') cout<<root->letter()<<"\n";
+			else cout<<root->weight()<<"\n";
 			printInOrderRecur(root->pright);
 		}
 		void printInOrder(){
@@ -106,18 +92,22 @@ class HuffTree{
 		void rotateLeft(HuffNode*& root){
 			HuffNode* right_tree=root->pright;
 			root->pright=right_tree->pleft;
+			root->height=max(root->pleft->height,root->pright->height)+1;
 			right_tree->pleft=root;
+			right_tree->height=max(right_tree->pleft->height,right_tree->pright->height)+1;
 			root=right_tree;
 		}
 		void rotateRight(HuffNode*& root){
 			HuffNode* left_tree=root->pleft;
 			root->pleft=left_tree->pright;
+			root->height=max(root->pleft->height,root->pright->height)+1;
 			left_tree->pright=root;
+			left_tree->height=max(left_tree->pleft->height,left_tree->pright->height)+1;
 			root=left_tree;
 		}
 		void left_balance(HuffNode*& root){
 			HuffNode* left_tree=root->pleft;
-			if(height(left_tree->pleft)<height(left_tree->pright)){
+			if(left_tree->pleft->height<left_tree->pright->height){
 				// l-r
 				rotateLeft(root->pleft);
 				rotateRight(root);
@@ -127,14 +117,10 @@ class HuffTree{
 				// l-e
 				rotateRight(root);
 			}
-			HuffNode* right_tree=root->pright;
-			if(height(right_tree->pleft)-height(right_tree->pright)>1){
-				left_balance(root->pright);
-			}
 		}
 		void right_balance(HuffNode*& root){
 			HuffNode* right_tree=root->pright;
-			if(height(right_tree->pleft)>height(right_tree->pright)){
+			if(right_tree->pleft->height>right_tree->pright->height){
 				// r-l
 				rotateRight(root->pright);
 				rotateLeft(root);
@@ -144,10 +130,27 @@ class HuffTree{
 				// r-e
 				rotateLeft(root);
 			}
-			HuffNode* left_tree=root->pleft;
-			if(height(left_tree->pright)-height(left_tree->pleft)>1){
-				right_balance(root->pleft);
+			
+		}
+		void balancePreorder(HuffNode*& root,int n){
+			if(n==0) return;
+			if(root->height<3) return;
+			if(root->pleft->height-root->pright->height>1){
+				// lech trai
+				left_balance(root);
+				n--;
+				// balancePreorder(root->pleft,n);
+				// balancePreorder(root->pright,n);
 			}
+			else if(root->pright->height- root->pleft->height>1){
+				// lech phai
+				right_balance(root);
+				n--;
+				// balancePreorder(root->pleft,n);
+				// balancePreorder(root->pright,n);
+			}
+			balancePreorder(root->pleft,n);
+			balancePreorder(root->pright,n);
 		}
 		map<char,string> encodeChar(){
 			//trả về một bảng chuyển đổi từ char qua bits
@@ -177,22 +180,68 @@ class HuffTree{
 			}
 			return res;
 		}
-
+		void printNSpace(int n)
+		{
+			for (int i = 0; i < n - 1; i++)
+				cout << " ";
+		}
+		void printInteger(int &n) { cout << n << " "; }
+		void printTreeStructure()
+		{
+			int height = this->root->height;
+			if (this->root == NULL)
+			{
+				cout << "NULL\n";
+				return;
+			}
+			queue<HuffNode *> q;
+			q.push(root);
+			HuffNode *temp;
+			int count = 0;
+			int maxNode = 1;
+			int level = 0;
+			int space = pow(2, height);
+			printNSpace(space / 2);
+			while (!q.empty())
+			{
+				temp = q.front();
+				q.pop();
+				if (temp == NULL)
+				{
+					cout << " ";
+					q.push(NULL);
+					q.push(NULL);
+				}
+				else
+				{
+					if (temp->pleft==NULL && temp->pright==NULL)
+					{
+						cout << temp->letter();
+					}
+					else
+					{
+						cout << temp->weight();
+					}
+					q.push(temp->pleft);
+					q.push(temp->pright);
+				}
+				printNSpace(space);
+				count++;
+				if (count == maxNode)
+				{
+					cout << endl;
+					count = 0;
+					maxNode *= 2;
+					level++;
+					space /= 2;
+					printNSpace(space / 2);
+				}
+				if (level == height)
+					return;
+			}
+		}
 };
 
-// insertion sort
-// void insertionSort(vector<pair<char,int>> &v){
-// 	int n=v.size();
-// 	for(int i=1;i<n;i++){
-// 		pair<char,int> temp=v[i];
-// 		int walker=i-1;
-// 		while(walker>=0 && temp.second<v[walker].second){
-// 			v[walker+1]=v[walker];
-// 			walker--;
-// 		}
-// 		v[walker+1]=temp;
-// 	}
-// }
 map<char,int> mapfreq(string name){
 	map<char,int> res;
 	for(char c: name){
@@ -226,13 +275,13 @@ map<char,int>  mergeFreq(map<char,int> freq, map<char,char>& tableEncode){
 }
 bool prior(const pair<char,int>& a,const pair<char,int>& b){
 	if(a.second!=b.second) return a.second<b.second;
-	// if(a.first>='a'&&a.first<='z' &&b.first>='a'&&b.first<='z'){
-	// 	return a.first<b.first;
-	// }
-	// if(a.first>='A'&&a.first<='Z'&& b.first>='A'&&b.second<='Z'){
-	// 	return a.first<b.first;
-	// }
-	return a.first<b.first;
+	if(a.first>='a'&&a.first<='z' &&b.first>='a'&&b.first<='z'){
+		return a.first<b.first;
+	}
+	if(a.first>='A'&&a.first<='Z'&& b.first>='A'&&b.second<='Z'){
+		return a.first<b.first;
+	}
+	return a.first>b.first;
 }
 string encodeNameCeasar(map<char,char> tableEncodeCearse, string nameCustomer){
 	string res="";
@@ -252,10 +301,14 @@ int bin2Dec(string bits){
 	int res=0;
 	//cout<<bits<<endl;
 	int n=bits.size();
-	bits=(n>10)? bits.substr(0,10): bits;
-	n=bits.size();
-	for(unsigned int i=0;i<n;i++){
-		res=res+(bits[i]-'0')*pow(2,n-1-i);
+	string bit10="";
+	for(int i=max(0,n-10);i<n;i++){
+		bit10=bits[i]+bit10;
+	}
+	
+	n=bit10.size();
+	for(int i=0;i<n;i++){
+		res=res+(bit10[i]-'0')*pow(2,n-1-i);
 	}
 	return res;
 }
@@ -272,7 +325,7 @@ class HeapHuffTree{
 		// }
 		HeapHuffTree(vector<pair<char,int>>& v){
 			this->order=0;
-			for(pair x:v){
+			for(pair<char,int> x:v){
 				insert(new HuffTree(x.first,x.second,order++));
 			}
 		}
@@ -327,26 +380,19 @@ class HeapHuffTree{
 				popMin();
 				temp2=top();
 				popMin();
-				 //cout<<"temp1: "<<temp1->letter()<<" "<<temp1->weight()<<endl;
-				 //cout<<"temp2: "<<temp2->letter()<<" "<<temp2->weight()<<endl;
+				// cout<<"temp1: "<<temp1->letter()<<" "<<temp1->weight()<<endl;
+				// cout<<"temp2: "<<temp2->letter()<<" "<<temp2->weight()<<endl;
 				temp3=new HuffTree(temp1,temp2,order++);
 				delete temp1;
 				delete temp2;
 				insert(temp3);
-				 //for(int i=0;i<forest.size();i++) cout<<"("<<forest[i]->letter()<<" "<<forest[i]->weight()<<")"<<" ";
+				// for(int i=0;i<forest.size();i++) cout<<"("<<forest[i]->letter()<<" "<<forest[i]->weight()<<")"<<" ";
 			}
 			return temp3;
 		}
 
 };
 class Restaurant{
-	private:
-		// cần lưu thông tin của khách hàng gần đây nhất
-		// table decode ceasar
-		// map<char,char> decodeCeasar;
-		// hufftree 
-		HuffTree* tree;
-		
 		
 	public:
 		class NhaG{
@@ -451,7 +497,7 @@ class Restaurant{
 						void printfInOrderRecur(Node* root){
 							if(root==NULL) return;
 							printfInOrderRecur(root->pLeft);
-							cout<<root->val<<endl;
+							cout<<root->val<<"\n";
 							printfInOrderRecur(root->pRight);
 						}
 						void printfInOrder(){
@@ -500,6 +546,9 @@ class Restaurant{
 							int n = arrTree.size();
 							if (n <= 2)
 								return 1;
+							if(n==3){
+								if(arrTree[0]==arrTree[1]||arrTree[0]==arrTree[2]||arrTree[1]==arrTree[2]) return 1;
+							}
 							int root = arrTree[0];
 							vector<int> left_tree;
 							vector<int> right_tree;
@@ -511,7 +560,7 @@ class Restaurant{
 									right_tree.push_back(arrTree[i]);
 							}
 							int sizeL = left_tree.size();
-							int sizeR = right_tree.size();
+							//int sizeR = right_tree.size();
 							return countWay(left_tree, arrFactorial) * countWay(right_tree, arrFactorial) * tohop(sizeL, n - 1, arrFactorial);
 						}
 						long long y(){
@@ -525,6 +574,7 @@ class Restaurant{
 				}
 				void kokusen(){
 					for(int i=1;i<=MAXSIZE;i++){
+						if(hash[i]->sizeTree()==0) continue;
 						hash[i]->kickCus(hash[i]->y()%MAXSIZE);
 					}
 				}
@@ -537,6 +587,12 @@ class Restaurant{
 						hash[i]=new BST();
 					}
 				}
+				~NhaG(){
+					for(int i=1;i<=MAXSIZE;i++){
+						delete hash[i];
+					}
+					// hash.clear();
+				}
 
 			private:
 				map<int,BST*> hash;
@@ -547,7 +603,7 @@ class Restaurant{
 					timeLine=0;
 				}
 				~NhaS(){
-					for(int i=0;i<minHeap.size();i++){
+					for(unsigned int i=0;i<minHeap.size();i++){
 						delete minHeap[i];
 					}
 				}
@@ -576,16 +632,16 @@ class Restaurant{
 							for (int i = 0; i < num; i++)
 							{
 								timeLineChange=timeChange;
-								cout<<orderPush.front()<<"-"<<ID()<<endl;
+								cout<<orderPush.front()<<"-"<<ID()<<"\n";
 								orderPush.pop();
 							}
 						}
 				};
 				void popMin(){
-					Region* del=top();
+					//Region* del=top();
 					minHeap[0]=minHeap[minHeap.size()-1];
 					minHeap.pop_back();
-					delete del;
+					//delete del;
 					reheapDown(0);
 				}
 				Region* top(){
@@ -632,7 +688,7 @@ class Restaurant{
 					}
 				}
 				int searchRegion(int id){
-					for(int i=0;i<minHeap.size();i++){
+					for(unsigned int i=0;i<minHeap.size();i++){
 						if(id==minHeap[i]->ID()) return i;
 					}
 					return -1;
@@ -654,14 +710,28 @@ class Restaurant{
 				}
 				void keiteiken(int num){
 					// xóa num các khách hàng ở num region có số lượng ít nhất theo FIFO // ở đầu luôn
-					for(int i=0;i<num;i++){
-						if(minHeap.size()==0) return;
-						top()->removeNum(num,timeLine++);
-						if(top()->sizeRegion()==0) popMin();
+					int n=minHeap.size();
+					queue<Region*> q;		//thu tu duoi khach trong cac khu vuc
+					for(int i=0;i<min(num,n);i++){
+						// if(minHeap.size()==0) return;
+						q.push(top());
+						popMin();
+					}
+					Region* qfront=NULL;
+					while(!q.empty()){
+						qfront=q.front();
+						q.pop();
+						qfront->removeNum(num,timeLine++);
+						if(qfront->sizeRegion()==0) delete qfront;
+						else{
+							minHeap.push_back(qfront);
+							reheapUp(minHeap.size()-1);
+						}
 					}
 				}
 				void traversalPreOrder(int root,int num){
-					if(root<minHeap.size()){
+					int n=minHeap.size();
+					if(root<n){
 						// in num khách hàng LIFO
 						queue<int> copy=minHeap[root]->copyQueue();
 						int id=minHeap[root]->ID();
@@ -670,9 +740,10 @@ class Restaurant{
 							st.push(copy.front());
 							copy.pop();
 						}
-						num=(num>st.size())? st.size():num;
+						int n=st.size();
+						num=(num>n)? st.size():num;
 						for(int i=0;i<num;i++){
-							cout<<id<<"-"<<st.top()<<endl;
+							cout<<id<<"-"<<st.top()<<"\n";
 							st.pop();
 						}
 						traversalPreOrder(2*root+1,num);
@@ -695,19 +766,18 @@ class Restaurant{
 		};
 		void lapse(string name)
 		{
-			// name="abaaabbbDd";
+			//  name="adABDccCCDDD";
 			map<char,int> freq=mapfreq(name);
-			if(freq.size()<3) return;
-			// freq xuất hiên của kí tự vì yêu cầu tính ổn định nên sẽ dùng insertion sort
-			//insertionSort(freq);
+			if(freq.size()<3){
+				//freq.clear();
+				return;
+			}
 			map<char,char> tableEncodeCeasar ;//= codeCeasar(freq);
 			map<char,int> merge=mergeFreq(freq,tableEncodeCeasar);
-			
 			// gop cac ki tu trung nhau
 			vector<pair<char,int>> encode(merge.begin(),merge.end());
 			stable_sort(encode.begin(),encode.end(),prior);
 			// for(auto x: encode) cout<<"("<<x.first<<" "<<x.second<<" "<<")";
-
 			HeapHuffTree* newHeaphuff=new HeapHuffTree(encode);
 			if(tree!=NULL)
 			{
@@ -723,6 +793,7 @@ class Restaurant{
 			if(result%2==1) gojo->selectRegion(result);
 			else sukuna->selectRegion(result);
 			delete newHeaphuff;
+			//tree->printTreeStructure();
 			// tim result;
 		}
 		void kokusen(){
@@ -733,6 +804,7 @@ class Restaurant{
 		}
 		void hand(){
 			// nếu k có gì thay đổi thì sẽ tạo một huffmanTree với char và freq của vector freqfreq
+			if(tree==NULL) return;
 			tree->printInOrder();
 		};
 		void limitless(int num){
@@ -747,9 +819,22 @@ class Restaurant{
 			sukuna=new NhaS();
 			tree=NULL;
 		}
+		~Restaurant(){
+			delete gojo;
+			delete sukuna;
+			if(tree!=NULL){
+				delete tree->Root();
+				delete tree;
+			}
+		}
 	private:
 		NhaG* gojo;
 		NhaS* sukuna;
+		// cần lưu thông tin của khách hàng gần đây nhất
+		// table decode ceasar
+		// map<char,char> decodeCeasar;
+		// hufftree 
+		HuffTree* tree;
 
 };
 
@@ -802,5 +887,6 @@ void simulate(string filename)
 	}
 	//cout<<"good luck";
 	delete r;
+	 // printMemoryUsage();
 	return;
 }
